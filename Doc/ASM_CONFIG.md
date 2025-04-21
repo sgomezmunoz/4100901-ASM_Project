@@ -18,7 +18,9 @@ Ejemplo básico de encabezado en `Src/main.s`:
     .thumb                    @ Genera instrucciones Thumb (16/32 bits)
     .global main              @ Hacer visible la etiqueta main
 
-    .equ MEM_LOC, 0x20000200  @ Dirección fija en SRAM para datos
+    .equ MEM_LOC, 0x20000010  @ Dirección fija en SRAM para datos
+    .equ ID, 0x813017         @ Valor a decrementar
+    .equ DATE, 0x1017         @ Fecha de nacimiento
 ```  
 
 ## 3. Definición de la función `main`
@@ -30,7 +32,7 @@ main:
     @ Inicializar registros
     movw    r0, #:lower16:MEM_LOC    @ Parte baja de la dirección
     movt    r0, #:upper16:MEM_LOC    @ Parte alta (ahora R0 = MEM_LOC)
-    ldr     r1, =813017              @ Valor inicial en R1
+    ldr     r1, =ID                  @ Cargar ID en r1
     str     r1, [r0]                 @ Almacena valor en MEM_LOC
 
     @ Llamar a la subrutina decrement
@@ -46,13 +48,13 @@ loop:
 Esta subrutina decrementa el valor en memoria hasta que sea ≤ 0 y cuenta iteraciones:
 
 ```assembly
-    .global decrement
 decrement:
     @ r0 apunta a MEM_LOC, obtener valor
-    ldr     r0, [r0]
-    subs    r0, r0, r1          @ r0 = r0 - r1
-    str     r0, [r0]           @ guarda r0 en MEM_LOC
-    cmp     r0, #0             @ ¿≤ 0?
+    ldr     r1, [r0]           @ Cargar valor de MEM_LOC en r1
+    ldr     r2, =DATE          @ Cargar fecha en r2
+    subs    r1, r1, r2         @ r1 = r1 - r2
+    str     r1, [r0]           @ guarda r1 en MEM_LOC
+    cmp     r1, #0             @ ¿ r1 ≤ 0?
     ble     exit_decrement     @ Si sí, salir
 
     @ Iteración válida
@@ -66,10 +68,64 @@ exit_decrement:
 
 > **Nota:** `bx lr` retorna al link register hacia la función que llamó.
 
+## 5. Implementación de `main.s`
+
+Asegúrate de no copiar codigo repetido e incluir los encabezados y funciones necesarias.
+
+El archivo de `main.s` deberia lucir de la siguiente manera:
+
+```assembly
+    .section .text            @ Código ejecutable
+    .syntax unified           @ Sintaxis unificada ARM/Thumb
+    .thumb                    @ Genera instrucciones Thumb (16/32 bits)
+    .global main              @ Hacer visible la etiqueta main
+
+    .equ MEM_LOC, 0x20000010  @ Dirección fija en SRAM para datos
+    .equ ID, 0x813017         @ Valor a decrementar
+    .equ DATE, 0x1017         @ Fecha de nacimiento
+
+main:
+    @ Inicializar registros
+    movw    r0, #:lower16:MEM_LOC    @ Parte baja de la dirección
+    movt    r0, #:upper16:MEM_LOC    @ Parte alta (ahora R0 = MEM_LOC)
+    ldr     r1, =ID                  @ Cargar ID en r1
+    str     r1, [r0]                 @ Almacena valor en MEM_LOC
+
+    @ Llamar a la subrutina decrement
+    bl      decrement
+
+    @ Bucle infinito de final
+loop:
+    b       loop
+
+
+decrement:
+    @ r0 apunta a MEM_LOC, obtener valor
+    ldr     r1, [r0]           @ Cargar valor de MEM_LOC en r1
+    ldr     r2, =DATE          @ Cargar fecha en r2
+    subs    r1, r1, r2         @ r1 = r1 - r2
+    str     r1, [r0]           @ guarda r1 en MEM_LOC
+    cmp     r1, #0             @ ¿ r1 ≤ 0?
+    ble     exit_decrement     @ Si sí, salir
+
+    @ Iteración válida
+    add     r7, r7, #1         @ Contador en r7
+    b       decrement          @ Repetir
+
+exit_decrement:
+    @ Retorno a main
+    bx      lr
+
+```
+
+
 ## 6. Depuración en VS Code
 
 1. Coloca breakpoints en `main` o `decrement` para inspeccionar registros.
-2. Inicia la depuración y observa cómo avanza la ejecución línea a línea.
+2. Inicia la depuración y observa cómo avanza la ejecución línea a línea y como cambia el valor de:
+    - Los registros del procesador.
+    - La memoria del programa.
+    - El contador del programa.
 
 ---
 

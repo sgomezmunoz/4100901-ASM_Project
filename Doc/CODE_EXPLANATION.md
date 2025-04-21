@@ -9,18 +9,21 @@ Este archivo describe en detalle cada instrucción del ejemplo en ensamblador (`
 ## 2. Encabezados y directivas
 
 ```assembly
-    .section .text            @ Define la sección de código en memoria flash
-    .syntax unified           @ Usa la sintaxis unificada ARM/Thumb
-    .thumb                    @ Genera instrucciones Thumb de 16/32 bits
-    .global main              @ Exporta etiqueta para enlazar desde el startup
-    .equ MEM_LOC, 0x20000200  @ Define una constante para dirección en SRAM
-```  
+.section .text            @ Código ejecutable
+.syntax unified           @ Sintaxis unificada ARM/Thumb
+.thumb                    @ Genera instrucciones Thumb (16/32 bits)
+.global main              @ Hacer visible la etiqueta main
+
+.equ MEM_LOC, 0x20000010  @ Dirección fija en SRAM para datos
+.equ ID, 0x813017         @ Valor a decrementar
+.equ DATE, 0x1017         @ Fecha de nacimiento
+```
 
 - **.section .text**: Ubica el ensamblador en la región de código ejecutable.
-- **.syntax unified**: Permite usar una única sintaxis para instrucciones ARM y Thumb, facilitando migraciones.
-- **.thumb**: Indica al ensamblador que genere instrucciones Thumb, que son más compactas y usadas en Cortex‑M.
-- **.global main**: Hace visible la etiqueta `main` al enlazador para que el startup pueda invocarla.
-- **.equ MEM_LOC**: Asigna una etiqueta simbólica a la dirección `0x20000200`, donde almacenaremos datos en RAM.
+- **.syntax unified**: Sintaxis única para instrucciones ARM y Thumb.
+- **.thumb**: Indica instrucciones Thumb.
+- **.global main**: Expone `main` al enlazador para el startup.
+- **.equ**: Define constantes simbólicas para memoria y valores.
 
 ---
 
@@ -28,71 +31,53 @@ Este archivo describe en detalle cada instrucción del ejemplo en ensamblador (`
 
 ```assembly
 main:
-    @ Cargar la dirección base en R0 usando movw/movt
-    movw    r0, #:lower16:MEM_LOC    @ R0 <- 0x0200 (parte baja de 0x20000200)
-    movt    r0, #:upper16:MEM_LOC    @ R0 <- 0x2000 (parte alta) => Ahora R0 = 0x20000200
-
-    @ Cargar valor inicial en R1
-    ldr     r1, =813017              @ R1 <- 813017 (literal cargado desde la tabla de constantes)
-
-    @ Almacenar R1 en la dirección apuntada por R0
-    str     r1, [r0]                 @ Mem[MEM_LOC] <- 813017
-
-    @ Invocar la rutina decrement
-    bl      decrement                @ Link Register = PC+4; PC = address(decrement)
-
-    @ Bucle infinito de finalización
+    movw    r0, #:lower16:MEM_LOC    @ Parte baja de la dirección
+    movt    r0, #:upper16:MEM_LOC    @ Parte alta (ahora R0 = MEM_LOC)
+    ldr     r1, =ID                  @ Cargar ID en R1
+    str     r1, [r0]                 @ Almacena valor en MEM_LOC
+    bl      decrement                @ Llamar a la subrutina decrement
 loop:
-    b       loop                     @ Salto incondicional a sí mismo para detener ejecución
-```  
+    b       loop                     @ Bucle infinito de final
+```
 
-| Instrucción | Registros/Memoria                        | Comentario                                                  |
-|-------------|------------------------------------------|-------------------------------------------------------------|
-| movw r0,... | R0[15:0] = lower16(MEM_LOC)             | Carga los 16 bits bajos de la dirección MEM_LOC en R0.      |
-| movt r0,... | R0[31:16] = upper16(MEM_LOC)            | Carga los 16 bits altos de MEM_LOC en R0, completando 32b.  |
-| ldr r1,=813017 | R1 = 813017                          | Literal cargado mediante pseudo-instrucción.                |
-| str r1,[r0] | Mem[0x20000200] = 813017               | Guarda el valor inicial en SRAM.                           |
-| bl decrement| LR = return_address; PC = &decrement     | Llama a `decrement`, guardando PC de retorno en LR.        |
-| loop: b loop| PC = loop                               | Bucle infinito al acabar.                                  |
+| Instrucción      | Registros/Memoria                   | Comentario                                           |
+|------------------|-------------------------------------|------------------------------------------------------|
+| movw r0,...      | R0[15:0] = lower16(MEM_LOC)         | Carga los 16 bits bajos de la dirección MEM_LOC.     |
+| movt r0,...      | R0[31:16] = upper16(MEM_LOC)        | Completa la dirección de 32 bits en R0.              |
+| ldr r1, =ID      | R1 = 0x813017                       | Carga el valor ID mediante pseudo-instrucción.       |
+| str r1, [r0]     | Mem[MEM_LOC] = 0x813017             | Guarda el valor ID en la SRAM.                       |
+| bl decrement     | LR = PC+4; PC = &decrement          | Salta a `decrement`, guardando la dirección de retorno. |
+| loop: b loop     | PC = loop                           | Bucle infinito tras retornar de `decrement`.         |
 
 ---
 
 ## 4. Subrutina `decrement`
 
 ```assembly
-    .global decrement
-
 decrement:
-    @ Leer valor actual de MEM_LOC
-    ldr     r2, [r0]                @ R2 <- Mem[MEM_LOC]                  
-    @ Restar R1 (el decremento)
-    subs    r2, r2, r1              @ R2 = R2 - R1; actualiza flags N,Z,C,V |
-    @ Guardar nuevo valor en memoria
-    str     r2, [r0]                @ Mem[MEM_LOC] <- R2                  
-    @ Comparar con cero
-    cmp     r2, #0                  @ Actualiza flags N,Z                   
-    @ Si ≤ 0, salir
-    ble     exit_decrement          @ Si Z=1 o N=1, branch a exit_decrement |
-
-    @ Si > 0, incrementar contador en R7
-    add     r7, r7, #1              @ R7 = R7 + 1                        
-    @ Repetir
-    b       decrement               @ Loop hasta que valor ≤ 0             
-
+    ldr     r1, [r0]           @ Cargar valor de MEM_LOC en R1
+    ldr     r2, =DATE          @ Cargar fecha en R2
+    subs    r1, r1, r2         @ r1 = r1 - r2
+    str     r1, [r0]           @ Guarda r1 en MEM_LOC
+    cmp     r1, #0             @ ¿r1 ≤ 0?
+    ble     exit_decrement     @ Si sí, salir
+    add     r7, r7, #1         @ Iteración válida: R7++
+    b       decrement          @ Repetir
 exit_decrement:
-    bx      lr                      @ PC = LR, retorno a caller (main)
-```  
+    bx      lr                 @ Retorno a `main`
+```
 
-- **ldr r2, [r0]**: carga el valor actual de la dirección en R0 (MEM_LOC) a R2.
-- **subs r2, r2, r1**: resta R1 de R2 y actualiza los *condition flags*:
-  - **Z** (zero) se activa si el resultado es cero.
-  - **N** (negative) si el bit más significativo del resultado es 1.
-- **str r2, [r0]**: escribe el nuevo valor de vuelta en MEM_LOC.
-- **cmp r2, #0**: compara con cero, afectando Z y N.
-- **ble exit_decrement**: salta si *Z=1* o *N=1* (resultado ≤ 0).
-- **add r7, r7, #1**: incrementa el contador de iteraciones en R7.
-- **b decrement**: vuelve al inicio para otro ciclo.
-- **bx lr**: retorna a la instrucción siguiente tras el `bl decrement` en `main`.
+| Instrucción       | Registros/Memoria                 | Comentario                                           |
+|-------------------|-----------------------------------|------------------------------------------------------|
+| ldr r1, [r0]      | R1 = Mem[MEM_LOC]                 | Carga el valor actual de memoria en R1.              |
+| ldr r2, =DATE     | R2 = 0x1017                       | Carga la constante DATE en R2.                       |
+| subs r1, r1, r2   | R1 = R1 - R2; flags Z y N         | Resta DATE al valor en memoria y actualiza flags.    |
+| str r1, [r0]      | Mem[MEM_LOC] = R1                 | Escribe el resultado de vuelta en memoria.           |
+| cmp r1, #0        | Ajusta flags Z y N                | Compara con cero para evaluar condición de salida.   |
+| ble exit_decrement| PC = exit_decrement               | Salta a `exit_decrement` si ≤ 0.                     |
+| add r7, r7, #1    | R7 = R7 + 1                       | Incrementa contador de iteraciones en R7.            |
+| b decrement       | PC = decrement                    | Repite la rutina hasta la condición de salida.       |
+| bx lr             | PC = LR                           | Retorna a la llamada en `main`.                      |
 
 ---
 
