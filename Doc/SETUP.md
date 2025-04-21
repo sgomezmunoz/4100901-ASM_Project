@@ -63,9 +63,20 @@ int main(void)
      ```
    - Asegúrate de que el compilador ASM está configurado:
 
-3. Guarda y vuelve a ejecutar **CMake: Configure** y **CMake: Build**.
+3. Sobreescribe el contenido de main.s con:
+   ```assembly
+      .global main
+
+   main:
+
+   loop:
+      b loop
+   ```  
+   - `.global main`: tExporta la etiqueta `main` para que sea visible desde cualquier lugar del programa. 
+   - `main`: entra en bucle infinito para que el programa no termine.
+4. Guarda y vuelve a ejecutar **CMake: Build**.
 
 ---
 
-A continuación, continúa con **ASM_CONFIG.md** para profundizar en la configuración y edición del código ensamblador.
+Continúa con [ASM_CONFIG.md](ASM_CONFIG.md) para profundizar en la configuración y edición del código ensamblador.
 

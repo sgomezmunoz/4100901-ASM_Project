@@ -12,22 +12,22 @@ Este archivo describe en detalle cada instrucción del ejemplo en ensamblador (`
     .section .text            @ Define la sección de código en memoria flash
     .syntax unified           @ Usa la sintaxis unificada ARM/Thumb
     .thumb                    @ Genera instrucciones Thumb de 16/32 bits
-    .global main_asm          @ Exporta etiqueta para enlazar desde C
+    .global main              @ Exporta etiqueta para enlazar desde el startup
     .equ MEM_LOC, 0x20000200  @ Define una constante para dirección en SRAM
 ```  
 
 - **.section .text**: Ubica el ensamblador en la región de código ejecutable.
 - **.syntax unified**: Permite usar una única sintaxis para instrucciones ARM y Thumb, facilitando migraciones.
 - **.thumb**: Indica al ensamblador que genere instrucciones Thumb, que son más compactas y usadas en Cortex‑M.
-- **.global main_asm**: Hace visible la etiqueta `main_asm` al enlazador para que el `main()` en C pueda invocarla.
+- **.global main**: Hace visible la etiqueta `main` al enlazador para que el startup pueda invocarla.
 - **.equ MEM_LOC**: Asigna una etiqueta simbólica a la dirección `0x20000200`, donde almacenaremos datos en RAM.
 
 ---
 
-## 3. Función `main_asm`
+## 3. Función `main`
 
 ```assembly
-main_asm:
+main:
     @ Cargar la dirección base en R0 usando movw/movt
     movw    r0, #:lower16:MEM_LOC    @ R0 <- 0x0200 (parte baja de 0x20000200)
     movt    r0, #:upper16:MEM_LOC    @ R0 <- 0x2000 (parte alta) => Ahora R0 = 0x20000200
@@ -80,7 +80,7 @@ decrement:
     b       decrement               @ Loop hasta que valor ≤ 0             
 
 exit_decrement:
-    bx      lr                      @ PC = LR, retorno a caller (main_asm)
+    bx      lr                      @ PC = LR, retorno a caller (main)
 ```  
 
 - **ldr r2, [r0]**: carga el valor actual de la dirección en R0 (MEM_LOC) a R2.
@@ -92,16 +92,16 @@ exit_decrement:
 - **ble exit_decrement**: salta si *Z=1* o *N=1* (resultado ≤ 0).
 - **add r7, r7, #1**: incrementa el contador de iteraciones en R7.
 - **b decrement**: vuelve al inicio para otro ciclo.
-- **bx lr**: retorna a la instrucción siguiente tras el `bl decrement` en `main_asm`.
+- **bx lr**: retorna a la instrucción siguiente tras el `bl decrement` en `main`.
 
 ---
 
 ## 5. Visualización de flujo
 
-1. **main_asm** inicializa memoria y llama a `decrement`.
+1. **main** inicializa memoria y llama a `decrement`.
 2. **decrement** ejecuta un bucle de resta hasta llegar a cero o negativo.
 3. Cada iteración válida incrementa **R7**.
-4. Al finalizar, retorna a **main_asm**, que entra en un bucle infinito.
+4. Al finalizar, retorna a **main**, que entra en un bucle infinito.
 
 Con esta explicación, deberías comprender cómo funciona el código a nivel de ISA y registros en la placa NUCLEO‑L476RG.
 

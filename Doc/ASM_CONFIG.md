@@ -68,10 +68,10 @@ exit_decrement:
 
 ## 6. Depuración en VS Code
 
-1. Coloca breakpoints en `main_asm` o `decrement` para inspeccionar registros.
+1. Coloca breakpoints en `main` o `decrement` para inspeccionar registros.
 2. Inicia la depuración y observa cómo avanza la ejecución línea a línea.
 
 ---
 
-Continúa con `CODE_EXPLANATION.md` para documentar cada instrucción y su efecto en registros/memoria.
+Continúa con [CODE_EXPLANATION.md](CODE_EXPLANATION.md) para documentar cada instrucción y su efecto en registros/memoria.
 

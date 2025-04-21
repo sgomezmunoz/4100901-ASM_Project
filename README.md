@@ -31,3 +31,5 @@ La guía se organiza en varios documentos Markdown que encontrarás en la carpet
 
 > **Nota:** Cada documento incluye enlaces relativos para facilitar la navegación y referencias cruzadas.
 
+Dirígete primero a [SETUP.md](Doc/SETUP.md) para configurar tu entorno de desarrollo.
+
